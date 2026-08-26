@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: React Native com Android
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Obter código-fonte
+        uses: actions/checkout@v7
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Configurar Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Preparar Gradle Wrapper
+        run: chmod +x android/gradlew
+
+      - name: Executar lint do TypeScript
+        run: npm run lint
+
+      - name: Executar lint do Android
+        working-directory: android
+        run: ./gradlew lint --no-daemon
+
+      - name: Executar testes do TypeScript
+        run: npm test -- --watchAll=false
+
+      - name: Executar testes do Android
+        working-directory: android
+        run: ./gradlew testDebugUnitTest --no-daemon
+
+      - name: Executar build do Android
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
