@@ -1,4 +1,4 @@
-name: Android CI
+name: Android CI - APK
 
 on:
   workflow_dispatch:
@@ -23,17 +23,31 @@ jobs:
           java-version: '25'
       - name: Configurar Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # O padrão da v3 inclui `tools`, removido dos repositórios do Android.
+          packages: platform-tools
       - name: Instalar SDK
         run: sdkmanager 'platforms;android-37.0' 'build-tools;36.0.0' 'platform-tools'
       - name: Configurar cache Gradle
         uses: gradle/actions/setup-gradle@v4
+      - name: Validar contrato do workflow
+        run: |
+          python3 -m venv "$RUNNER_TEMP/ci-venv"
+          "$RUNNER_TEMP/ci-venv/bin/pip" install -r tools/ci/requirements.txt
+          "$RUNNER_TEMP/ci-venv/bin/python" -m unittest discover -s tools/ci -v
       - name: Build, testes e lint
         run: ./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug --no-daemon
-      - name: Guardar APK e relatórios
+      - name: Disponibilizar APK para download
+        uses: actions/upload-artifact@v4
+        with:
+          name: rotalog-debug-${{ github.run_number }}-${{ github.sha }}
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
+      - name: Guardar relatórios de testes e lint
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: android-debug-and-reports
-          path: |
-            app/build/outputs/apk/debug/*.apk
-            app/build/reports/
+          name: android-reports-${{ github.run_number }}-${{ github.sha }}
+          path: app/build/reports/
+          retention-days: 30

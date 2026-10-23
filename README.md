@@ -42,6 +42,22 @@ No Android Studio, abra a raiz, aguarde o Gradle Sync e execute `app`. No Window
 
 APK: [`app/build/outputs/apk/debug/app-debug.apk`](app/build/outputs/apk/debug/app-debug.apk).
 
+## APK automático no GitHub
+
+Cada push na `main` (inclusive merge de pull request) executa o workflow [Android CI - APK](https://github.com/ivanmatheus-dev/rotalog-mobile/actions/workflows/ci.yml). Ele configura o ambiente, gera o APK debug e executa todos os testes unitários e lint. O APK só é publicado quando essas verificações passam. Pull requests também são validados; é possível iniciar uma execução manual em **Actions → Android CI - APK → Run workflow**.
+
+Para baixar, entre no link acima, abra uma execução verde da `main` e, em **Artifacts**, baixe **rotalog-debug-<número da execução>-<commit>**. Extraia o ZIP e instale `app-debug.apk` em um Android compatível com os requisitos acima, autorizando a instalação por essa origem quando solicitado. É necessário estar conectado ao GitHub e ter acesso ao repositório. O download fica disponível por 30 dias (sujeito ao limite de retenção do repositório); uma nova execução gera outro artifact.
+
+Esse APK é a versão demonstrativa `1.2`, assinada automaticamente com chave de debug, sem secrets de publicação. Runners diferentes podem gerar chaves diferentes; se o Android recusar uma atualização por assinatura incompatível, desinstale a versão anterior antes de instalar (isso apaga os dados locais). Os relatórios de testes e lint ficam em um artifact separado **android-reports-…**, inclusive quando a validação falha. Os testes instrumentados continuam sendo executados localmente; não fazem parte deste workflow.
+
+O contrato do workflow pode ser verificado sem Android SDK:
+
+```bash
+python3 -m venv /tmp/rotalog-ci-venv
+/tmp/rotalog-ci-venv/bin/pip install -r tools/ci/requirements.txt
+/tmp/rotalog-ci-venv/bin/python -m unittest discover -s tools/ci -v
+```
+
 Revisão do acesso e recebimento: [galeria de 390 capturas](app/build/review/access-cargo/index.html) e [pacote ZIP](app/build/review/access-cargo/rotalog-1.2-acesso-recebimento.zip), gerados localmente e fora do Git. Resultados, ciclos TDD e limitações em [docs/ACCESS-CARGO-UX-VALIDATION.md](docs/ACCESS-CARGO-UX-VALIDATION.md).
 
 ## Verificar

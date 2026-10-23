@@ -36,6 +36,7 @@ captures/
 *.aab
 *.hprof
 *.log
+__pycache__/
 
 # macOS
 .DS_Store
