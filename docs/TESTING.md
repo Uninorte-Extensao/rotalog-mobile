@@ -5,9 +5,9 @@ Os testes unitários (`app/src/test`) e instrumentados (`app/src/androidTest`) u
 | Seção | Sufixo do pacote | Unitários | Instrumentados |
 | --- | --- | --- | --- |
 | Login | `login` | `LoginViewModelTest` | `LoginFlowTest` |
-| Rotas e paradas | `routes` | `RouteRulesTest` | `RouteFlowTest`, `RouteReviewTest` |
+| Rotas e paradas | `routes` | `RouteRulesTest` | `RouteFlowTest`, `RouteReviewTest`, `StopDetailsTest` |
 | Preparação e recebimento | `loading` | `LoadingRulesTest` | `LoadingFlowTest` |
-| Histórico | `history` | `HistoryRulesTest` | `HistoryFlowTest` |
+| Histórico | `history` | `HistoryRulesTest` | `HistoryFlowTest`, `HistoryConsultationTest` |
 | Perfil e controles demonstrativos | `profile` | `ProfileRulesTest` | `ProfileFlowTest`, `ProfileReviewTest` |
 
 ## Durante a mudança
@@ -58,4 +58,4 @@ Use os requisitos de ambiente do README. Para interface/fluxo, valide as seçõe
 - Histórico tem suas próprias verificações do registro concluído, progresso e isolamento da rota atual, além da revisão nos dois temas.
 - Perfil concentra temas, expansão, rolagem, restauração, cenários, reinício e envio simulado. As asserções operacionais de independência dos controles continuam nessa suíte.
 
-A antiga revisão que visitava várias abas foi dividida em `RouteReviewTest` e `HistoryFlowTest`. As capturas completas do Perfil já são cobertas por `ProfileReviewTest`. Nenhuma verificação operacional foi removida para acelerar a execução; o comando padrão continua executando todas as seções.
+A antiga revisão que visitava várias abas foi dividida em `RouteReviewTest` e `HistoryFlowTest`, `HistoryConsultationTest`. As capturas completas do Perfil já são cobertas por `ProfileReviewTest`. Nenhuma verificação operacional foi removida para acelerar a execução; o comando padrão continua executando todas as seções.

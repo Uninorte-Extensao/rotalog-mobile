@@ -6,7 +6,7 @@ data class RoutesUiState(
     val scenario: DemoScenario = DemoScenario.ASSIGNED,
     val route: Route? = null,
     val selectedStopId: String? = null,
-    val expanded: Boolean = false,
+    val detailsOpen: Boolean = false,
     val loading: Boolean = true,
     val error: String? = null,
     val message: String? = null

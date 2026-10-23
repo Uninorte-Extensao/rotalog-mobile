@@ -13,12 +13,6 @@ internal object LoginIcons {
         ImageVector.Builder(name, 24.dp, 24.dp, 24f, 24f).apply {
             path(stroke = SolidColor(Color.Black), strokeLineWidth = 1.8f, pathBuilder = draw)
         }.build()
-    val Truck = icon("Caminhão") {
-        moveTo(2f, 5f); lineTo(15f, 5f); lineTo(15f, 17f); lineTo(2f, 17f); close()
-        moveTo(15f, 9f); lineTo(19f, 9f); lineTo(22f, 13f); lineTo(22f, 17f); lineTo(15f, 17f)
-        moveTo(8f, 18f); arcTo(2f, 2f, 0f, true, true, 4f, 18f); arcTo(2f, 2f, 0f, true, true, 8f, 18f)
-        moveTo(20f, 18f); arcTo(2f, 2f, 0f, true, true, 16f, 18f); arcTo(2f, 2f, 0f, true, true, 20f, 18f)
-    }
     val Mail = icon("E-mail") {
         moveTo(3f, 5f); lineTo(21f, 5f); lineTo(21f, 19f); lineTo(3f, 19f); close()
         moveTo(3f, 6f); lineTo(12f, 13f); lineTo(21f, 6f)

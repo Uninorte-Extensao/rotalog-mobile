@@ -27,7 +27,7 @@ class ProfileReviewTest {
         val values = ContentValues().apply {
             put(MediaStore.Downloads.DISPLAY_NAME, "$name-$scale.png")
             put(MediaStore.Downloads.MIME_TYPE, "image/png")
-            put(MediaStore.Downloads.RELATIVE_PATH, "Download/RotaLogProfileReview")
+            put(MediaStore.Downloads.RELATIVE_PATH, "Download/RotaLogUnifiedReview")
         }
         val uri = checkNotNull(context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values))
         val screenshot = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()

@@ -1,5 +1,7 @@
 package com.rotalog.delivery.shared
 
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -47,7 +49,8 @@ fun SectionCard(
         modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
+        shadowElevation = 2.dp,
     ) {
         Column(
             modifier = Modifier.padding(RotaLogSpacing.card),
@@ -83,7 +86,7 @@ fun PrimaryAction(
         onClick = onClick,
         modifier = modifier.fillMaxWidth().heightIn(min = RotaLogSpacing.primaryAction),
         enabled = enabled,
-        shape = MaterialTheme.shapes.medium,
+        shape = MaterialTheme.shapes.small,
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
     ) {
         Text(text, style = MaterialTheme.typography.labelLarge)
@@ -139,3 +142,43 @@ private fun DarkComponentsPreview() = ComponentPreview(dark = true)
 @Preview(name = "Componentes · Fonte 200%", showBackground = true, widthDp = 360, fontScale = 2f)
 @Composable
 private fun LargeFontComponentsPreview() = ComponentPreview(dark = false)
+
+/** Window width, rather than device configuration, also supports split-screen. */
+@Composable
+fun stackActions(): Boolean {
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val width = with(density) { androidx.compose.ui.platform.LocalWindowInfo.current.containerSize.width.toDp() }
+    return width < 360.dp || density.fontScale >= 1.5f
+}
+
+@Composable
+fun AdaptiveGroup(content: @Composable () -> Unit) {
+    if (stackActions()) Column(verticalArrangement = Arrangement.spacedBy(12.dp)) { content() }
+    else androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { content() }
+}
+
+@Composable
+fun BackAction(label: String, onBack: () -> Unit) {
+    androidx.compose.material3.TextButton(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) {
+        androidx.compose.material3.Icon(AppIcons.Back, null)
+        Text(label)
+    }
+}
+
+@Composable
+fun SectionCard(onClick: () -> Unit, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    Surface(onClick = onClick, modifier = modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = .4f))) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
+    }
+}
+
+@Composable
+fun ActionFeedback(message: String?, error: Boolean = false) {
+    if (message == null) return
+    val requester = androidx.compose.runtime.remember { androidx.compose.foundation.relocation.BringIntoViewRequester() }
+    Text(message, Modifier.bringIntoViewRequester(requester).semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite },
+        color = if (error) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
+    androidx.compose.runtime.LaunchedEffect(message) { requester.bringIntoView() }
+}

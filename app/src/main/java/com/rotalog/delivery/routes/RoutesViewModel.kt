@@ -15,7 +15,7 @@ class RoutesViewModel(
     private val savedState: SavedStateHandle
 ) : ViewModel() {
     private val selected = savedState.getStateFlow<String?>("stop", null)
-    private val expanded = savedState.getStateFlow("expanded", false)
+    private val detailsOpen = savedState.getStateFlow("detailsOpen", savedState.get<Boolean>("expanded") ?: false)
     private val message = MutableStateFlow<String?>(null)
     private val busy = MutableStateFlow(false)
     private val error = MutableStateFlow<String?>(null)
@@ -29,10 +29,31 @@ class RoutesViewModel(
             viewModelScope.launch { repository.route.value?.let { repository.acceptRoute(it.id) } }
         }
         savedState.get<String>("sync")?.let { value -> SyncStatus.entries.find { it.name == value }?.let(demo::simulateSync) }
+        if (detailsOpen.value) {
+            // The previous sheet could expand the next stop without persisting a marker selection.
+            val route = repository.route.value
+            val stopId = selected.value ?: route?.nextStop?.id
+            if (stopId != null && route?.stops?.any { it.id == stopId } == true) savedState["stop"] = stopId
+            else closeDetails()
+        }
+        viewModelScope.launch {
+            var routeId = repository.route.value?.id
+            repository.route.collect { route ->
+                if (routeId != route?.id || (selected.value != null && route?.stops?.none { it.id == selected.value } != false)) {
+                    closeDetails()
+                }
+                routeId = route?.id
+            }
+        }
     }
 
-    private val content = combine(demo.scenario, repository.route, selected, expanded, message) { scenario, route, id, open, notice ->
-        RoutesUiState(scenario, route, route?.stops?.find { it.id == id }?.id ?: route?.nextStop?.id, open, false, message = notice)
+    private val content = combine(demo.scenario, repository.route, selected, detailsOpen, message) { scenario, route, id, open, notice ->
+        val validSelection = route?.stops?.find { it.id == id }?.id
+        RoutesUiState(
+            scenario = scenario, route = route,
+            selectedStopId = validSelection ?: route?.nextStop?.id,
+            detailsOpen = open && validSelection != null, loading = false, message = notice
+        )
     }
     val uiState: StateFlow<RoutesUiState> = combine(content, busy, error) { state, loading, failure ->
         state.copy(loading = loading, error = failure)
@@ -41,12 +62,16 @@ class RoutesViewModel(
     fun selectStop(id: String) {
         if (repository.route.value?.stops?.none { it.id == id } != false) return
         savedState["stop"] = id
-        savedState["expanded"] = true
     }
-    fun setExpanded(value: Boolean) { savedState["expanded"] = value }
+    fun openDetails(id: String) {
+        if (repository.route.value?.stops?.none { it.id == id } != false) return
+        savedState["stop"] = id
+        savedState["detailsOpen"] = true
+    }
+    fun closeDetails() { savedState["detailsOpen"] = false; savedState["expanded"] = false }
     fun nextStop() {
         savedState["stop"] = repository.route.value?.nextStop?.id
-        savedState["expanded"] = false
+        savedState["detailsOpen"] = false
     }
     fun selectScenario(scenario: DemoScenario) {
         if (scenario != demo.scenario.value) resetToScenario(scenario)
@@ -54,7 +79,7 @@ class RoutesViewModel(
     private fun resetToScenario(scenario: DemoScenario) {
         savedState["scenario"] = scenario.name
         savedState["stop"] = null
-        savedState["expanded"] = false
+        savedState["detailsOpen"] = false
         savedState["accepted"] = false
         savedState["routeSnapshot"] = null
         savedState["sync"] = SyncStatus.LOCAL.name
@@ -89,9 +114,11 @@ class RoutesViewModel(
         }
     }
     private fun command(success: String? = null, action: suspend (String) -> RouteCommandResult) {
+        if (busy.value) return
         val id = repository.route.value?.id ?: return
         error.value = null
         message.value = null
+        busy.value = true
         viewModelScope.launch {
             try {
                 when (val result = action(id)) {
@@ -103,6 +130,7 @@ class RoutesViewModel(
                     }
                 }
             } catch (_: java.io.IOException) { error.value = "Não foi possível salvar. Tente novamente." }
+            finally { busy.value = false }
         }
     }
     fun setPreparationCheck(check: PreparationCheck, checked: Boolean) = command { repository.setPreparationCheck(it, check, checked) }

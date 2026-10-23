@@ -1,6 +1,7 @@
 package com.rotalog.delivery.login
 
-import androidx.compose.foundation.BorderStroke
+import com.rotalog.delivery.shared.SectionCard
+import com.rotalog.delivery.shared.AppIcons
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -43,17 +44,12 @@ fun LoginScreen(
             val minimumHeight = maxHeight
             Column(
                 Modifier.widthIn(max = 420.dp).fillMaxWidth().verticalScroll(rememberScrollState())
-                    .heightIn(min = minimumHeight).padding(24.dp),
+                    .heightIn(min = minimumHeight).padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp),
             ) {
                 LoginBrand()
                 Spacer(Modifier.weight(1f))
-                Surface(
-                    shape = RoundedCornerShape(24.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                    shadowElevation = 1.dp,
-                ) {
-                    Column(Modifier.fillMaxWidth().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                SectionCard {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("Entrar na sua conta", style = MaterialTheme.typography.headlineSmall)
                             Text("Use o acesso fornecido pela sua operação.", style = MaterialTheme.typography.bodyMedium,
@@ -100,7 +96,6 @@ fun LoginScreen(
                         Button(onClick = submit, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp), shape = RoundedCornerShape(12.dp)) {
                             Text("Entrar")
                         }
-                    }
                 }
                 Spacer(Modifier.weight(1f))
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -120,7 +115,7 @@ private fun LoginBrand() {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primary) {
             Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
-                Icon(LoginIcons.Truck, null, Modifier.size(26.dp))
+                Icon(AppIcons.Truck, null, Modifier.size(26.dp))
             }
         }
         Column {

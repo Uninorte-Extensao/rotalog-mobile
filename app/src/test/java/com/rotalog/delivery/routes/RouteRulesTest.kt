@@ -51,7 +51,7 @@ class RouteRulesTest {
     }
 
 
-    @Test fun selectionAndExpansionRestoreWithoutChangingOperationalState() = runTest {
+    @Test fun selectionRestoresWithoutOpeningDetailsOrChangingOperation() = runTest {
         val repo = DemoRouteRepository()
         val saved = SavedStateHandle()
         val vm = RoutesViewModel(repo, repo, saved)
@@ -59,7 +59,7 @@ class RouteRulesTest {
         val original = repo.route.value
         vm.selectStop("ponta-negra")
         assertEquals("ponta-negra", vm.uiState.value.selectedStopId)
-        assertTrue(vm.uiState.value.expanded)
+        assertFalse(vm.uiState.value.detailsOpen)
         assertEquals(original, repo.route.value)
         vm.selectStop("invalid")
         assertEquals("ponta-negra", vm.uiState.value.selectedStopId)
@@ -67,10 +67,74 @@ class RouteRulesTest {
         val restored = RoutesViewModel(restoredRepo, restoredRepo, saved)
         assertEquals(DemoScenario.ACTIVE, restored.uiState.value.scenario)
         assertEquals("ponta-negra", restored.uiState.value.selectedStopId)
-        assertTrue(restored.uiState.value.expanded)
+        assertFalse(restored.uiState.value.detailsOpen)
         restored.nextStop()
         assertEquals("amazonas", restored.uiState.value.selectedStopId)
-        assertFalse(restored.uiState.value.expanded)
+        assertFalse(restored.uiState.value.detailsOpen)
+    }
+
+    @Test fun detailsOpenExplicitlyRestoreLegacyKeyAndCloseOnScenarioChange() = runTest {
+        val repo = DemoRouteRepository()
+        val saved = SavedStateHandle(mapOf("scenario" to "ACTIVE", "stop" to "ponta-negra", "expanded" to true))
+        val vm = RoutesViewModel(repo, repo, saved)
+        val original = repo.route.value
+        assertTrue(vm.uiState.value.detailsOpen)
+        vm.closeDetails()
+        assertFalse(vm.uiState.value.detailsOpen)
+        vm.openDetails("invalid")
+        assertFalse(vm.uiState.value.detailsOpen)
+        vm.openDetails("ponta-negra")
+        assertTrue(vm.uiState.value.detailsOpen)
+        assertEquals(original, repo.route.value)
+        val restoredRepo = DemoRouteRepository()
+        val restored = RoutesViewModel(restoredRepo, restoredRepo, saved)
+        assertTrue(restored.uiState.value.detailsOpen)
+        restored.selectScenario(DemoScenario.EMPTY)
+        assertFalse(restored.uiState.value.detailsOpen)
+        assertNull(restored.uiState.value.route)
+    }
+
+    @Test fun legacyExpandedNextStopRestoresWhenNoMarkerWasSelected() = runTest {
+        val repo = DemoRouteRepository()
+        val vm = RoutesViewModel(repo, repo, SavedStateHandle(mapOf("scenario" to "ACTIVE", "expanded" to true)))
+        assertEquals("amazonas", vm.uiState.value.selectedStopId)
+        assertTrue(vm.uiState.value.detailsOpen)
+        vm.closeDetails()
+        vm.selectStop("ponta-negra")
+        assertFalse(vm.uiState.value.detailsOpen)
+    }
+
+    @Test fun replacingRouteClosesDetailsEvenWhenStopIdentifiersAreReused() = runTest {
+        val repo = DemoRouteRepository()
+        val vm = RoutesViewModel(repo, repo, SavedStateHandle())
+        vm.selectScenario(DemoScenario.ACTIVE)
+        vm.openDetails("amazonas")
+        assertTrue(vm.uiState.value.detailsOpen)
+        repo.selectScenario(DemoScenario.ASSIGNED)
+        assertFalse(vm.uiState.value.detailsOpen)
+        repo.selectScenario(DemoScenario.ACTIVE)
+        assertFalse(vm.uiState.value.detailsOpen)
+    }
+
+    @Test fun commandsKeepKnownContentAndPreventRepeatedActionsWhileBusy() = runTest {
+        val repo = DemoRouteRepository()
+        var calls = 0
+        val slow = object : com.rotalog.delivery.data.RouteRepository by repo {
+            override suspend fun confirmPreparation(routeId: String): RouteCommandResult {
+                calls++
+                kotlinx.coroutines.delay(100)
+                return repo.confirmPreparation(routeId)
+            }
+        }
+        val vm = RoutesViewModel(slow, repo, SavedStateHandle())
+        val original = repo.route.value
+        vm.confirmPreparation()
+        vm.confirmPreparation()
+        assertEquals(1, calls)
+        assertTrue(vm.uiState.value.loading)
+        assertEquals(original, vm.uiState.value.route)
+        advanceUntilIdle()
+        assertFalse(vm.uiState.value.loading)
     }
 
     @Test fun restoredAcceptanceDoesNotStartRoute() = runTest {

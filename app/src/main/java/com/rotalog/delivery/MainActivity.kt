@@ -28,12 +28,12 @@ import androidx.navigation.compose.*
 import com.rotalog.delivery.login.LoginScreen
 import com.rotalog.delivery.login.LoginViewModel
 import com.rotalog.delivery.history.HistoryScreen
+import com.rotalog.delivery.history.HistoryRouteScreen
 import com.rotalog.delivery.model.*
 import com.rotalog.delivery.profile.ProfileScreen
 import com.rotalog.delivery.routes.*
 import com.rotalog.delivery.shared.*
 import com.rotalog.delivery.ui.theme.RotalogTheme
-import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -80,33 +80,35 @@ private fun AppNavigation(container: AppContainer, settings: SettingsViewModel, 
     val nav = rememberNavController()
     val entry by nav.currentBackStackEntryAsState()
     val snackbar = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val actions = remember(context) { ExternalActions(context) }
     var navigateStopId by rememberSaveable { mutableStateOf<String?>(null) }
-    var navigationFailure by rememberSaveable { mutableStateOf<String?>(null) }
-    LaunchedEffect(navigateStopId) { navigationFailure = null }
+    var navigationFeedback by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(navigateStopId) { navigationFeedback = null }
     val settingsError by settings.error.collectAsStateWithLifecycle()
     LaunchedEffect(settingsError) { settingsError?.let { snackbar.showSnackbar(it); settings.clearError() } }
-    fun notify(message: String?) { message?.let { scope.launch { snackbar.showSnackbar(it) } } }
     val tabs = listOf("routes" to "Rotas", "history" to "Histórico", "profile" to "Perfil")
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {
-            NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
-                tabs.forEachIndexed { index, (destination, label) ->
-                    NavigationBarItem(
-                        selected = entry?.destination?.hierarchy?.any { it.route == destination } == true,
-                        onClick = {
-                            nav.navigate(destination) {
-                                popUpTo(nav.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
-                        icon = { Icon(listOf(NavigationIcons.Routes, NavigationIcons.History, NavigationIcons.Profile)[index], contentDescription = null) },
-                        label = { Text(label) }
-                    )
+            Column {
+                HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = .2f))
+                NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
+                    tabs.forEachIndexed { index, (destination, label) ->
+                        NavigationBarItem(
+                            selected = entry?.destination?.hierarchy?.any { it.route == destination } == true,
+                            onClick = {
+                                nav.navigate(destination) {
+                                    popUpTo(nav.graph.findStartDestination().id) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            },
+                            icon = { Icon(listOf(NavigationIcons.Routes, NavigationIcons.History, NavigationIcons.Profile)[index], contentDescription = null) },
+                            label = { Text(label, style = MaterialTheme.typography.labelMedium) },
+                            colors = NavigationBarItemDefaults.colors(selectedIconColor = MaterialTheme.colorScheme.primary, selectedTextColor = MaterialTheme.colorScheme.primary, indicatorColor = MaterialTheme.colorScheme.primaryContainer)
+                        )
+                    }
                 }
             }
         }
@@ -116,9 +118,15 @@ private fun AppNavigation(container: AppContainer, settings: SettingsViewModel, 
                 composable("route") { backStack ->
                     val vm = routeViewModel(nav, backStack, container)
                     val state by vm.uiState.collectAsStateWithLifecycle()
-                    RoutesScreen(state, vm::acceptRoute, vm::selectStop, vm::setExpanded,
-                        { id -> nav.navigate("stops/$id") }, { navigateStopId = it.id }, { notify(actions.dial(it)) }, vm::nextStop,
-                        { nav.navigate("preparation/$it") }, { nav.navigate("receipt/$it") }, vm::startRoute)
+                    RoutesScreen(state, vm::acceptRoute, vm::selectStop, { open -> if (open) state.selectedStopId?.let(vm::openDetails) else vm.closeDetails() },
+                        { id -> nav.navigate("stops/$id") }, { navigateStopId = it.id }, { actions.dial(it) }, vm::nextStop,
+                        { nav.navigate("preparation/$it") }, { nav.navigate("receipt/$it") }, vm::startRoute, actions::copyAddress, navigationOpen = navigateStopId != null, onProfile = {
+                            nav.navigate("profile") {
+                                popUpTo(nav.graph.findStartDestination().id) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        })
                 }
                 composable("preparation/{routeId}", arguments = listOf(navArgument("routeId") { type = NavType.StringType })) { backStack ->
                     val vm = routeViewModel(nav, backStack, container)
@@ -140,12 +148,18 @@ private fun AppNavigation(container: AppContainer, settings: SettingsViewModel, 
                     val vm = routeViewModel(nav, backStack, container)
                     val state by vm.uiState.collectAsStateWithLifecycle()
                     val route = state.route?.takeIf { it.id == backStack.arguments?.getString("routeId") }
-                    StopsScreen(route, { vm.selectStop(it); nav.popBackStack() }, { nav.popBackStack() })
+                    StopsScreen(route, { vm.openDetails(it); nav.popBackStack() }, { nav.popBackStack() })
                 }
             }
-            composable("history") {
-                val history by container.routes.history.collectAsStateWithLifecycle()
-                HistoryScreen(history)
+            navigation(startDestination = "historyHome", route = "history") {
+                composable("historyHome") {
+                    val history by container.routes.history.collectAsStateWithLifecycle()
+                    HistoryScreen(history) { nav.navigate("historyRoute/$it") }
+                }
+                composable("historyRoute/{routeId}", arguments = listOf(navArgument("routeId") { type = NavType.StringType })) { backStack ->
+                    val history by container.routes.history.collectAsStateWithLifecycle()
+                    HistoryRouteScreen(history.find { it.id == backStack.arguments?.getString("routeId") && it.status == RouteStatus.COMPLETED }) { nav.popBackStack() }
+                }
             }
             composable("profile") { backStack ->
                 val vm = routeViewModel(nav, backStack, container)
@@ -163,10 +177,10 @@ private fun AppNavigation(container: AppContainer, settings: SettingsViewModel, 
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(stop.address)
-                    navigationFailure?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                    OutlinedButton(onClick = { navigationFailure = actions.navigate(stop, NavigationApp.GOOGLE_MAPS); if (navigationFailure == null) navigateStopId = null }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Google Maps") }
-                    OutlinedButton(onClick = { navigationFailure = actions.navigate(stop, NavigationApp.WAZE); if (navigationFailure == null) navigateStopId = null }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Waze") }
-                    OutlinedButton(onClick = { notify(actions.copyAddress(stop)); navigateStopId = null }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Copiar endereço") }
+                    ActionFeedback(navigationFeedback)
+                    OutlinedButton(onClick = { navigationFeedback = actions.navigate(stop, NavigationApp.GOOGLE_MAPS); if (navigationFeedback == null) navigateStopId = null }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Google Maps") }
+                    OutlinedButton(onClick = { navigationFeedback = actions.navigate(stop, NavigationApp.WAZE); if (navigationFeedback == null) navigateStopId = null }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Waze") }
+                    OutlinedButton(onClick = { navigationFeedback = actions.copyAddress(stop) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Copiar endereço") }
                 }
             },
             confirmButton = { TextButton(onClick = { navigateStopId = null }) { Text("Fechar") } }

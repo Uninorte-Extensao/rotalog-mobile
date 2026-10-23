@@ -1,7 +1,6 @@
 package com.rotalog.delivery.profile
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -14,7 +13,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -24,7 +22,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.rotalog.delivery.login.LoginIcons
+import com.rotalog.delivery.shared.AppIcons
 import com.rotalog.delivery.model.DemoScenario
 import com.rotalog.delivery.model.SyncStatus
 import com.rotalog.delivery.model.ThemeMode
@@ -72,7 +70,7 @@ fun ProfileScreen(
         }
         ProfileCard {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(LoginIcons.Truck, null, Modifier.size(28.dp), tint = MaterialTheme.colorScheme.primary)
+                Icon(AppIcons.Truck, null, Modifier.size(28.dp), tint = MaterialTheme.colorScheme.primary)
                 Text("Veículo", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             }
             Text("Renault Master", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
@@ -122,11 +120,7 @@ fun ProfileScreen(
 
 @Composable
 private fun ProfileCard(content: @Composable ColumnScope.() -> Unit) {
-    SectionCard(
-        Modifier.shadow(2.dp, MaterialTheme.shapes.large)
-            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f), MaterialTheme.shapes.large),
-        content = content
-    )
+    SectionCard(content = content)
 }
 
 @Composable

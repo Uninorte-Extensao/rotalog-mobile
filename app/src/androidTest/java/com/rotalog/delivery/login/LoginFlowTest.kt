@@ -1,5 +1,6 @@
 package com.rotalog.delivery.login
 
+import com.rotalog.delivery.shared.captureScrollPages
 import android.content.ContentValues
 import android.graphics.Bitmap
 import android.os.SystemClock
@@ -75,9 +76,9 @@ class LoginFlowTest {
         compose.onNodeWithText("A recuperação de senha ainda não está conectada. Solicite ajuda à sua operação.").assertExists()
         compose.onNodeWithText("Rotas").assertDoesNotExist()
         click("Explorar demonstração")
-        compose.onNodeWithText("Rotas").assertExists()
+        compose.onNode(hasText("Rotas") and hasClickAction()).assertExists()
         compose.activityRule.scenario.recreate()
-        compose.onNodeWithText("Rotas").assertExists()
+        compose.onNode(hasText("Rotas") and hasClickAction()).assertExists()
     }
     @Test fun reviewLoginInBothThemesWithKeyboardAndErrors() {
         val settings = (compose.activity.application as RotalogApplication).container.settings
@@ -85,7 +86,7 @@ class LoginFlowTest {
             runBlocking { settings.setTheme(theme) }
             compose.waitForIdle()
             compose.onNodeWithText("Entrar na sua conta").performScrollTo().assertIsDisplayed()
-            capture("${theme.name}-login")
+            captureScrollPages(compose, "${theme.name}-login")
             compose.onNodeWithTag("login-email").performScrollTo().performTextReplacement("nome@exemplo.com")
             compose.onNodeWithTag("login-password").performScrollTo().performTextInput("segredo")
             capture("${theme.name}-keyboard")
@@ -110,7 +111,7 @@ class LoginFlowTest {
         val values = ContentValues().apply {
             put(MediaStore.Downloads.DISPLAY_NAME, "$name-$scale.png")
             put(MediaStore.Downloads.MIME_TYPE, "image/png")
-            put(MediaStore.Downloads.RELATIVE_PATH, "Download/RotaLogLoginReview")
+            put(MediaStore.Downloads.RELATIVE_PATH, "Download/RotaLogUnifiedReview")
         }
         val uri = checkNotNull(context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values))
         val screenshot = checkNotNull(instrumentation.uiAutomation.takeScreenshot())

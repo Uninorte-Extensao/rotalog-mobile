@@ -1,5 +1,7 @@
 package com.rotalog.delivery.routes
 
+import com.rotalog.delivery.shared.captureScrollPages
+import com.rotalog.delivery.shared.captureFrame
 import android.content.ContentValues
 import android.graphics.Bitmap
 import android.os.SystemClock
@@ -29,7 +31,7 @@ class RouteReviewTest {
         val values = ContentValues().apply {
             put(MediaStore.Downloads.DISPLAY_NAME, "$name-$scale.png")
             put(MediaStore.Downloads.MIME_TYPE, "image/png")
-            put(MediaStore.Downloads.RELATIVE_PATH, "Download/RotaLogReview")
+            put(MediaStore.Downloads.RELATIVE_PATH, "Download/RotaLogUnifiedReview")
         }
         val uri = checkNotNull(context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values))
         val screenshot = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
@@ -37,7 +39,7 @@ class RouteReviewTest {
         screenshot.recycle()
     }
 
-    @Test fun reviewRoutesInBothThemesAndKeepSelectedMarkerVisible() {
+    @Test fun reviewRoutesInBothThemesWithFullDetailsAndStops() {
         compose.onNodeWithText("Explorar demonstração").performScrollTo().performClick()
         // The preceding flow copies an address. Let Android's clipboard overlay dismiss.
         SystemClock.sleep(6_500)
@@ -48,21 +50,20 @@ class RouteReviewTest {
                 container.settings.setTheme(if (theme == "Claro") com.rotalog.delivery.model.ThemeMode.LIGHT else com.rotalog.delivery.model.ThemeMode.DARK)
             }
             compose.runOnIdle { container.routes.selectScenario(DemoScenario.ASSIGNED) }
-            capture("$prefix-assigned")
+            captureScrollPages(compose, "$prefix-assigned")
+            compose.onNodeWithText("Ver lista de paradas").performScrollTo().performClick()
+            captureScrollPages(compose, "$prefix-stops")
+            androidx.test.espresso.Espresso.pressBack()
             compose.runOnIdle { container.routes.selectScenario(DemoScenario.ACTIVE) }
             capture("$prefix-active")
             click("Ver detalhes")
-            compose.onNodeWithText("Recolher detalhes").assertIsDisplayed()
-            val marker = compose.onNodeWithContentDescription("Parada 3, Supermercado Amazonas, próxima parada, selecionada")
-                .assertIsDisplayed().fetchSemanticsNode().boundsInRoot
-            val handle = compose.onNodeWithTag("route-sheet-handle", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
-            val legend = compose.onNodeWithText("Mapa demonstrativo • sem GPS").fetchSemanticsNode().boundsInRoot
-            assertTrue("Selected marker must stay entirely above the panel", marker.bottom <= handle.top)
-            assertTrue("Map legend must not cover the selected marker", marker.top >= legend.bottom)
-            capture("$prefix-details")
+            compose.onNodeWithText("Detalhes da parada").assertIsDisplayed()
+            captureScrollPages(compose, "$prefix-details")
             compose.onNodeWithText("14 volumes para entrega").performScrollTo().assertIsDisplayed()
             capture("$prefix-products")
-            click("Recolher detalhes")
+            androidx.test.espresso.Espresso.pressBack()
+            compose.runOnIdle { container.routes.selectScenario(DemoScenario.EMPTY) }
+            captureScrollPages(compose, "$prefix-empty")
         }
     }
 }

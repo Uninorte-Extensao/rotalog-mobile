@@ -19,23 +19,35 @@ import com.rotalog.delivery.shared.*
 @Composable
 fun PreparationScreen(
     state: RoutesUiState, onCheck: (PreparationCheck, Boolean) -> Unit,
-    onConfirm: () -> Unit, onContinue: () -> Unit, onBack: () -> Unit
+    onConfirm: () -> Unit, onContinue: () -> Unit, onBack: () -> Unit,
+    routeMap: RouteMap = MapLibreRouteMap
 ) {
     val route = state.route
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        TextButton(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) { Text("← Voltar à rota") }
+        BackAction("Voltar à rota", onBack)
         PageTitle("Checklist antes de sair", "Verifique as condições do veículo antes de conferir a carga.")
         DemoBanner()
         if (route == null || route.status != RouteStatus.ACCEPTED) {
             Text("Aceite uma rota atribuída para preparar a saída.")
             return@Column
         }
-        LoadingHeader(route, 2, "Checklist inicial")
+
+        MapaPercurso(routeMap, route)
+
         SectionCard {
-            Text("Renault Master • PHB-9A23", style = MaterialTheme.typography.titleMedium)
+            Text(route.code, style = MaterialTheme.typography.titleLarge)
+            Text("Etapa 2 de 4 • Checklist inicial")
+        }
+        SectionCard {
+            Icon(AppIcons.Truck, null, tint = MaterialTheme.colorScheme.primary)
+            Text("Renault Master", style = MaterialTheme.typography.titleLarge)
+            StatusBadge("PHB-9A23")
+        }
+        SectionCard {
+            Text("Condições para saída", style = MaterialTheme.typography.titleMedium)
             Text("${route.checklist.size} de ${PreparationCheck.entries.size} itens verificados", color = MaterialTheme.colorScheme.primary)
             PreparationCheck.entries.forEach { item ->
-                CheckRow(item.label, item in route.checklist) { onCheck(item, it) }
+                CheckRow(item.label, item in route.checklist, enabled = !state.loading) { onCheck(item, it) }
             }
         }
         state.message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
@@ -46,7 +58,7 @@ fun PreparationScreen(
             PrimaryAction("Avançar para conferência", onContinue)
         } else {
             Text("Verifique os quatro itens para confirmar o preparo.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            PrimaryAction("Confirmar checklist", onConfirm, enabled = route.checklist.containsAll(PreparationCheck.entries))
+            PrimaryAction("Confirmar checklist", onConfirm, enabled = !state.loading && route.checklist.containsAll(PreparationCheck.entries))
         }
         Text("Ao desmarcar um item, o preparo volta a ficar pendente. O recebimento já confirmado permanece registrado.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
@@ -63,7 +75,7 @@ fun ReceiptScreen(
     var resolveProduct by rememberSaveable { mutableStateOf<String?>(null) }
     var confirmReceipt by rememberSaveable { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        TextButton(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) { Text("← Voltar à rota") }
+        BackAction("Voltar à rota", onBack)
         PageTitle("Recebimento da carga", "Conferência física na saída do CD")
         DemoBanner("Demonstração • registro local, sem envio ao CD")
         if (route == null || route.status != RouteStatus.ACCEPTED) {
@@ -88,12 +100,20 @@ fun ReceiptScreen(
         }
         Text("Volumes previstos", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Text("${route.checkedCargo.size} de ${route.manifest.size} produtos conferidos • ${route.collectionVolumes} volumes")
+        LinearProgressIndicator(progress = { if (route.manifest.isEmpty()) 0f else route.checkedCargo.size.toFloat() / route.manifest.size }, modifier = Modifier.fillMaxWidth())
         route.manifest.forEach { item ->
             SectionCard {
                 Text(item.description, style = MaterialTheme.typography.titleMedium)
-                Text("${item.quantity} ${item.unit}")
+                Text("${item.quantity} ${item.unit}", style = MaterialTheme.typography.titleLarge)
+                val issue = route.cargoIssues.find { it.productId == item.productId }
+                StatusBadge(when {
+                    issue != null && !issue.resolved -> "⚠ Divergência pendente"
+                    item.productId in route.checkedCargo -> "✓ Conferido"
+                    issue?.resolved == true -> "Aguardando nova conferência"
+                    else -> "○ Pendente de conferência"
+                })
                 CheckRow("Conferir ${item.description}", item.productId in route.checkedCargo,
-                    enabled = route.prepared && !route.cargoReceived && route.openCargoIssues.none { it.productId == item.productId }
+                    enabled = !state.loading && route.prepared && !route.cargoReceived && route.openCargoIssues.none { it.productId == item.productId }
                 ) { onCheck(item.productId, it) }
                 if (route.prepared && !route.cargoReceived) {
                     TextButton(onClick = { reportProduct = item.productId }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Relatar divergência") }
@@ -112,23 +132,27 @@ fun ReceiptScreen(
         state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         if (!route.cargoReceived) {
             if (route.openCargoIssues.isNotEmpty()) Text("Recebimento bloqueado: resolva as divergências e confira novamente os produtos.", color = MaterialTheme.colorScheme.error)
+            if (!route.prepared) Text("Recebimento bloqueado: confirme o checklist.", color = MaterialTheme.colorScheme.error)
+            if (route.checkedCargo.size < route.manifest.size) Text("Recebimento bloqueado: confira todos os produtos.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text("Marque cada produto somente após conferir todos os volumes físicos. Nenhum item é confirmado automaticamente.", style = MaterialTheme.typography.bodyMedium)
-            PrimaryAction("Confirmar recebimento da carga", { confirmReceipt = true }, enabled = route.canReceive)
+            PrimaryAction("Confirmar recebimento da carga", { confirmReceipt = true }, enabled = !state.loading && route.canReceive)
         }
     }
     val item = route?.manifest?.find { it.productId == reportProduct }
     if (item != null) CargoIssueDialog(item, { reportProduct = null }) { issue -> onReport(issue); reportProduct = null }
     if (resolveProduct != null) AlertDialog(
         onDismissRequest = { resolveProduct = null }, title = { Text("Divergência resolvida?") },
-        text = { Text("Confirme apenas após resolver a falta ou avaria com a equipe do CD. O produto deverá ser conferido novamente. Este registro fica somente na demonstração.") },
-        confirmButton = { TextButton(onClick = { resolveProduct?.let(onResolve); resolveProduct = null }) { Text("Confirmar resolução") } },
-        dismissButton = { TextButton(onClick = { resolveProduct = null }) { Text("Cancelar") } }
+        text = { Column(Modifier.verticalScroll(rememberScrollState())) {
+            route?.manifest?.find { it.productId == resolveProduct }?.let { Text(it.description, style = MaterialTheme.typography.titleMedium) }
+            Text("Confirme apenas após resolver a falta ou avaria com a equipe do CD. O produto deverá ser conferido novamente. Este registro fica somente na demonstração.") } },
+        confirmButton = { TextButton(modifier = Modifier.heightIn(min = 48.dp), onClick = { resolveProduct?.let(onResolve); resolveProduct = null }) { Text("Confirmar resolução") } },
+        dismissButton = { TextButton(modifier = Modifier.heightIn(min = 48.dp), onClick = { resolveProduct = null }) { Text("Cancelar") } }
     )
     if (confirmReceipt && route != null) AlertDialog(
         onDismissRequest = { confirmReceipt = false }, title = { Text("Confirmar recebimento?") },
-        text = { Text("Você confirma a conferência física dos ${route.collectionVolumes} volumes? Isso registra a coleta nesta demonstração e mantém a rota aguardando início.") },
-        confirmButton = { TextButton(onClick = { confirmReceipt = false; onConfirm() }) { Text("Confirmar carga recebida") } },
-        dismissButton = { TextButton(onClick = { confirmReceipt = false }) { Text("Cancelar") } }
+        text = { Column(Modifier.verticalScroll(rememberScrollState())) { Text("Você confirma a conferência física dos ${route.collectionVolumes} volumes? Isso registra a coleta nesta demonstração e mantém a rota aguardando início.") } },
+        confirmButton = { TextButton(modifier = Modifier.heightIn(min = 48.dp), onClick = { confirmReceipt = false; onConfirm() }) { Text("Confirmar carga recebida") } },
+        dismissButton = { TextButton(modifier = Modifier.heightIn(min = 48.dp), onClick = { confirmReceipt = false }) { Text("Cancelar") } }
     )
 }
 
@@ -146,7 +170,7 @@ private fun LoadingHeader(route: Route, step: Int, label: String) {
         }
         HorizontalDivider()
         Text("Etapa $step de 4 • $label", color = MaterialTheme.colorScheme.primary)
-        LinearProgressIndicator(progress = { step / 4f }, modifier = Modifier.fillMaxWidth())
+        LinearProgressIndicator(progress = { (step - 1) / 4f }, modifier = Modifier.fillMaxWidth())
     }
 }
 
@@ -178,7 +202,7 @@ private fun CargoIssueDialog(item: StopItem, onDismiss: () -> Unit, onConfirm: (
                 OutlinedTextField(value = note, onValueChange = { if (it.length <= 500) note = it }, label = { Text("Observações (opcional)") }, supportingText = { Text("${note.length}/500 caracteres") }, modifier = Modifier.fillMaxWidth())
             }
         },
-        confirmButton = { TextButton(onClick = { onConfirm(CargoIssue(item.productId, CargoIssueReason.valueOf(reasonName), note)) }) { Text("Salvar divergência") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
+        confirmButton = { TextButton(modifier = Modifier.heightIn(min = 48.dp), onClick = { onConfirm(CargoIssue(item.productId, CargoIssueReason.valueOf(reasonName), note)) }) { Text("Salvar divergência") } },
+        dismissButton = { TextButton(modifier = Modifier.heightIn(min = 48.dp), onClick = onDismiss) { Text("Cancelar") } }
     )
 }

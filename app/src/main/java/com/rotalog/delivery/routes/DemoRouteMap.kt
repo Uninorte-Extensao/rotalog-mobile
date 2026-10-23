@@ -32,31 +32,29 @@ fun DemoRouteMap(
     stops: List<Stop>,
     selectedStopId: String?,
     nextStopId: String?,
-    visibleHeight: Dp,
+    headerInset: Dp,
+    summaryInset: Dp,
     onSelectStop: (String) -> Unit,
-    modifier: Modifier = Modifier,
-    expanded: Boolean = false
+    modifier: Modifier = Modifier
 ) {
     val colors = MaterialTheme.colorScheme
     val ordered = stops.sortedBy { it.sequence }
     BoxWithConstraints(modifier.background(colors.surfaceVariant)) {
-        val mapHeight = visibleHeight.coerceIn(104.dp, maxHeight)
+        val mapHeight = (maxHeight - summaryInset).coerceAtLeast(0.dp)
         var legendPixels by remember { mutableIntStateOf(0) }
         val density = LocalDensity.current
-        val topInset = with(density) { legendPixels.toDp() } + 16.dp
-        val compact = expanded && mapHeight < 250.dp
-        val grid = !expanded && mapHeight < 250.dp
+        val topInset = headerInset + with(density) { legendPixels.toDp() } + 8.dp
+        val grid = mapHeight - topInset < 250.dp
         val positions = ordered.mapIndexed { index, stop ->
-            // In the compact viewport, keep the selected marker in view; other stops remain in the full map.
             val x = if (grid) .08f + (index % 4) * .28f else listOf(.16f, .38f, .74f, .83f, .59f, .29f, .17f, .64f)[index % 8]
-            val y = if (grid) (index / 4) * .86f + .04f else listOf(.24f, .18f, .27f, .47f, .55f, .47f, .73f, .79f)[index % 8]
-            val selectedCompact = compact && stop.id == selectedStopId
-            Offset(if (selectedCompact) .5f else x, if (selectedCompact) .5f else y)
+            val rows = (ordered.size + 3) / 4
+            val y = if (grid) { if (rows <= 1) .5f else (index / 4).toFloat() / (rows - 1) } else listOf(.24f, .18f, .27f, .47f, .55f, .47f, .73f, .79f)[index % 8]
+            Offset(x, y)
         }
         Canvas(Modifier.fillMaxSize()) {
             val visiblePx = mapHeight.toPx()
             val mapPoints = positions.mapIndexed { index, point ->
-                val regionHeight = if (compact && ordered[index].id != selectedStopId) size.height else visiblePx
+                val regionHeight = visiblePx
                 Offset(24.dp.toPx() + point.x * (size.width - 48.dp.toPx()), topInset.toPx() + 24.dp.toPx() + point.y * (regionHeight - topInset.toPx() - 48.dp.toPx()).coerceAtLeast(0f))
             }
             val streetColor = colors.surface.copy(alpha = .8f)
@@ -83,7 +81,7 @@ fun DemoRouteMap(
             val completed = stop.status == StopStatus.COMPLETED
             val next = stop.id == nextStopId
             val point = positions[index]
-            val regionHeight = if (compact && !selected) maxHeight else mapHeight
+            val regionHeight = mapHeight
             val x = (maxWidth - 48.dp) * point.x
             val y = topInset + (regionHeight - topInset - 48.dp).coerceAtLeast(0.dp) * point.y
             val markerShape = if (completed) RoundedCornerShape(10.dp) else CircleShape
@@ -108,8 +106,8 @@ fun DemoRouteMap(
                 }
             }
         }
-        Text("Mapa demonstrativo • sem GPS", Modifier.align(Alignment.TopCenter).onSizeChanged { legendPixels = it.height }.padding(horizontal = 8.dp)
-            .background(colors.surface.copy(alpha = .95f), MaterialTheme.shapes.small).padding(horizontal = 10.dp, vertical = 5.dp),
+        Text("Mapa demonstrativo • sem GPS", Modifier.align(Alignment.TopCenter).padding(top = headerInset).onSizeChanged { legendPixels = it.height }.padding(horizontal = 4.dp)
+            .background(colors.surface.copy(alpha = .95f), MaterialTheme.shapes.small).padding(horizontal = 4.dp, vertical = 5.dp),
             color = colors.onSurface, style = MaterialTheme.typography.labelSmall)
     }
 }

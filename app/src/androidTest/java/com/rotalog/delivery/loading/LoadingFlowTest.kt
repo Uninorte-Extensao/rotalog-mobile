@@ -1,5 +1,7 @@
 package com.rotalog.delivery.loading
 
+import com.rotalog.delivery.shared.captureScrollPages
+import com.rotalog.delivery.shared.captureFrame
 import android.content.ContentValues
 import android.graphics.Bitmap
 import android.os.SystemClock
@@ -47,7 +49,7 @@ class LoadingFlowTest {
         val values = ContentValues().apply {
             put(MediaStore.Downloads.DISPLAY_NAME, "$name-$scale.png")
             put(MediaStore.Downloads.MIME_TYPE, "image/png")
-            put(MediaStore.Downloads.RELATIVE_PATH, "Download/RotaLogLoadingReview")
+            put(MediaStore.Downloads.RELATIVE_PATH, "Download/RotaLogUnifiedReview")
         }
         val uri = checkNotNull(context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values))
         val bitmap = instrumentation.uiAutomation.takeScreenshot()
@@ -72,6 +74,7 @@ class LoadingFlowTest {
         compose.activityRule.scenario.recreate(); compose.waitForIdle()
         scrollClick("Registrar resolução no CD")
         click("Confirmar resolução")
+        compose.onNodeWithText("Aguardando nova conferência").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Conferir Óleo").performScrollTo().assertIsOff()
         val manifest = container.routes.route.value!!.manifest
         manifest.forEach { scrollClick("Conferir ${it.description}") }
@@ -102,23 +105,31 @@ class LoadingFlowTest {
                 container.settings.setTheme(if (theme == "Claro") ThemeMode.LIGHT else ThemeMode.DARK)
             }
             compose.runOnIdle { container.routes.selectScenario(DemoScenario.ASSIGNED) }
-            scrollClick("Aceitar rota"); click("Confirmar aceite"); scrollClick("Preparar saída")
+            scrollClick("Aceitar rota")
+            captureFrame(compose, "$theme-accept-confirmation")
+            click("Confirmar aceite")
+            captureScrollPages(compose, "$theme-accepted")
+            scrollClick("Preparar saída")
             scrollClick(PreparationCheck.FUEL.label)
             compose.activityRule.scenario.recreate(); compose.waitForIdle()
             compose.onNodeWithText(PreparationCheck.FUEL.label).performScrollTo().assertIsOn()
-            capture("$theme-checklist")
+            captureScrollPages(compose, "$theme-checklist")
             PreparationCheck.entries.filterNot { it == PreparationCheck.FUEL }.forEach { scrollClick(it.label) }
             scrollClick("Confirmar checklist"); scrollClick("Avançar para conferência")
             compose.onNodeWithText("Produtos de higiene").performScrollTo().assertIsDisplayed()
-            capture("$theme-conferencia")
+            captureScrollPages(compose, "$theme-conferencia")
             compose.onAllNodesWithText("Relatar divergência")[0].performScrollTo().performClick()
             capture("$theme-divergencia")
             click("Cancelar")
             container.routes.route.value!!.manifest.forEach { scrollClick("Conferir ${it.description}") }
             scrollClick("Confirmar recebimento da carga"); click("Confirmar carga recebida")
             compose.onNodeWithText("Carga recebida confirmada").performScrollTo().assertIsDisplayed()
-            capture("$theme-recebimento")
+            captureScrollPages(compose, "$theme-recebimento")
             scrollClick("Voltar à rota para iniciar")
+            captureScrollPages(compose, "$theme-ready-to-start")
+            scrollClick("Iniciar rota")
+            captureFrame(compose, "$theme-start-confirmation")
+            click("Cancelar")
         }
     }
 }
