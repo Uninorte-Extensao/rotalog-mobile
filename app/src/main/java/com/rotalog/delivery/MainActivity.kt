@@ -1,5 +1,7 @@
 package com.rotalog.delivery
 
+import android.content.Context
+import android.content.ContextWrapper
 import android.app.Activity
 import android.os.Bundle
 import androidx.core.view.WindowCompat
@@ -50,7 +52,7 @@ fun RotalogApp(container: AppContainer) {
     })
     val theme by settings.theme.collectAsStateWithLifecycle()
     val dark = when (theme) { ThemeMode.DARK -> true; ThemeMode.LIGHT -> false; else -> isSystemInDarkTheme() }
-    val activity = LocalContext.current as Activity
+    val activity = LocalContext.current.findActivity()
     SideEffect {
         WindowCompat.getInsetsController(activity.window, activity.window.decorView).apply {
             isAppearanceLightStatusBars = !dark
@@ -194,4 +196,13 @@ private fun routeViewModel(nav: NavHostController, entry: NavBackStackEntry, con
     return viewModel(owner, factory = viewModelFactory {
         initializer { RoutesViewModel(container.routes, container.routes, createSavedStateHandle()) }
     })
+}
+
+private fun Context.findActivity(): Activity {
+    var contexto = this
+    while (contexto is ContextWrapper) {
+        if (contexto is Activity) return contexto
+        contexto = contexto.baseContext
+    }
+    error("Activity ausente")
 }

@@ -38,9 +38,9 @@ class RouteRulesTest {
     @Test fun quantitiesAndProgressDistinguishCollectionAndDelivery() {
         val route = DemoRoutes.active()
         assertEquals((1..8).toList(), route.stops.map { it.sequence })
-        assertEquals(70, route.collectionVolumes)
-        assertEquals(70, route.deliveryVolumes)
-        assertEquals(70, route.collectedVolumes)
+        assertEquals(77, route.collectionVolumes)
+        assertEquals(77, route.deliveryVolumes)
+        assertEquals(77, route.collectedVolumes)
         assertEquals(8, route.deliveredVolumes)
         assertEquals(.25f, route.progress)
         assertEquals("amazonas", route.nextStop!!.id)

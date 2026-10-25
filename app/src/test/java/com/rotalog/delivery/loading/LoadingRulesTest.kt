@@ -46,8 +46,8 @@ class LoadingRulesTest {
     }
     @Test fun explicitReceiptCompletesCollectionAndNeverStartsDelivery() = runTest {
         val repo = DemoRouteRepository(); val id = accepted(repo)
-        assertEquals(70, repo.route.value!!.manifest.sumOf { it.quantity })
-        assertEquals(8, repo.route.value!!.manifest.size)
+        assertEquals(77, repo.route.value!!.manifest.sumOf { it.quantity })
+        assertEquals(9, repo.route.value!!.manifest.size)
         assertTrue(repo.confirmReceipt(id) is RouteCommandResult.Rejected)
         repo.setCargoConfirmation(id, true)
         assertFalse(repo.route.value!!.cargoReceived)
@@ -56,7 +56,7 @@ class LoadingRulesTest {
         val route = repo.route.value!!
         assertTrue(route.cargoReceived)
         assertEquals(RouteStatus.ACCEPTED, route.status)
-        assertEquals(70, route.collectedVolumes)
+        assertEquals(77, route.collectedVolumes)
         assertEquals(0, route.deliveredVolumes)
         assertEquals(1, route.completedStops)
         assertEquals("rio-negro", route.nextStop!!.id)

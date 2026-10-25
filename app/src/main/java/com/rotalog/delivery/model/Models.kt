@@ -15,7 +15,9 @@ data class StopItem(val productId: String, val description: String, val unit: St
 data class Stop(
     val id: String, val sequence: Int, val type: StopType, val status: StopStatus,
     val name: String, val address: String, val reference: String, val window: String,
-    val contact: String, val phone: String, val instructions: String, val items: List<StopItem>
+    val contact: String, val phone: String, val instructions: String, val items: List<StopItem>,
+    val latitude: Double = 0.0,
+    val longitude: Double = 0.0,
 ) : java.io.Serializable { val volumes: Int get() = items.sumOf { it.quantity } }
 data class Route(
     val id: String, val code: String, val date: String, val status: RouteStatus,

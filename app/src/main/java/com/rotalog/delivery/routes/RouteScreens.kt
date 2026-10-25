@@ -31,7 +31,7 @@ fun RoutesScreen(
     onStart: () -> Unit,
     onCopy: (Stop) -> String = { "" },
     navigationOpen: Boolean = false,
-    routeMap: RouteMap = DemonstrationRouteMap,
+    routeMap: RouteMap = MapLibreRouteMap,
     onProfile: () -> Unit = {},
     onStep: (DepartureStep) -> Unit = {}, onBackStep: () -> Unit = {},
     onCargoConfirmation: (Boolean) -> Unit = {}, onOpenIssue: () -> Unit = {},
@@ -54,7 +54,7 @@ fun RoutesScreen(
             }
             state.route.status == RouteStatus.ACTIVE -> ActiveRoute(state, onSelectStop, onDetailsChange, onShowStops, onNextStop, routeMap)
             else -> {
-                DepartureFlow(state, onAccept, onShowStops, onStart, onStep, onBackStep, onCargoConfirmation, onOpenIssue, onDismissIssue, onEditIssue, onSubmitIssue, onResolveIssue, onReceive)
+                DepartureFlow(state, onAccept, onShowStops, onStart, onStep, onBackStep, onCargoConfirmation, onOpenIssue, onDismissIssue, onEditIssue, onSubmitIssue, onResolveIssue, onReceive, routeMap = routeMap)
             }
         }
     }

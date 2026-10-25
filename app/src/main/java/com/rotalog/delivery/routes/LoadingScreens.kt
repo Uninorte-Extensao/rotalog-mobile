@@ -32,7 +32,8 @@ internal fun DepartureFlow(
     onStart: () -> Unit, onStep: (DepartureStep) -> Unit, onBack: () -> Unit,
     onCheck: (Boolean) -> Unit, onOpenIssue: () -> Unit, onDismissIssue: () -> Unit,
     onEditIssue: (String?, CargoIssueReason?, String) -> Unit, onSubmitIssue: () -> Unit,
-    onResolve: (String) -> Unit, onReceive: () -> Unit
+    onResolve: (String) -> Unit, onReceive: () -> Unit,
+    routeMap: RouteMap = MapLibreRouteMap
 ) {
     val route = state.route ?: return
     var confirmation by rememberSaveable(route.id) { mutableStateOf<String?>(null) }
@@ -54,6 +55,7 @@ internal fun DepartureFlow(
                 DepartureStep.ACCEPTANCE -> {
                     Text("Sua próxima saída", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                     DemoBanner()
+                    MapCourse(routeMap, route)
                     SectionCard {
                         Text(route.date, style = MaterialTheme.typography.titleMedium)
                         Text("${route.stops.size} paradas • ${route.deliveryVolumes} volumes para entrega")
